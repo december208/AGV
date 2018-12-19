@@ -1,0 +1,11 @@
+<launch>
+  
+    <include file="$(find agv)/launch/image_stream.launch" />
+    <include file="$(find agv)/launch/continuous_detection.launch" />
+    <node pkg="rqt_console" type="rqt_console" name="rqt_console"/>
+    <node pkg="rqt_logger_level" type="rqt_logger_level"  name="rqt_logger_level"/>
+    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>
+    <node name="target_pub" pkg="agv" type="target_pub"/>
+
+</launch>
+

@@ -5,18 +5,24 @@
 #include <agv/targetAction.h>
 #include <actionlib/server/simple_action_server.h>
 #include <ros/ros.h>
-#include <tf2_ros/transform_listener.h>
+#include <math.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Pose.h> 
 #include <tf2/transform_datatypes.h>
 #include <tf2/LinearMath/Transform.h>
-#include <math.h>
+#include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 
 typedef actionlib::SimpleActionServer<agv::targetAction> Server;
 ros::Publisher cmd_pub;
 geometry_msgs::TransformStamped targetTF;
 tf2::Stamped<tf2::Transform> targetTF2;
+
+double getRemainDeg();
+double getRemainDist();
+void execute(const agv::targetGoalConstPtr& goal, Server* as);
+void releaseObj();
 
 double getRemainDeg(){
     double dx, dy, dTheta;
@@ -33,14 +39,27 @@ double getRemainDist(){
     return sqrt(dx*dx+dy*dy)*1000.0;
 }
 
-void execute(const agv::targetGoalConstPtr& goal, Server* as)  
-{ 
+void releaseObj(){
+    std_msgs::String cmd_vel;
+    ROS_INFO("Release Object");
+    cmd_vel.data = "o";
+    cmd_pub.publish(cmd_vel);
+    ros::Duration(1.0).sleep();
+    ROS_INFO("Go Backward");
+    cmd_vel.data = "2s";
+    cmd_pub.publish(cmd_vel);
+    ros::Duration(1.5).sleep();
+    cmd_vel.data = "q";
+    cmd_pub.publish(cmd_vel);
+}
+
+void execute(const agv::targetGoalConstPtr& goal, Server* as){ 
     static tf2_ros::Buffer tfBuffer;
     static tf2_ros::TransformListener tfListener(tfBuffer);
     ros::Rate rate(25);
     double angle=0;
-    double degTolerance = 3.0;
-    double distTolerance = 6.0;
+    double degTolerance = 5.0;
+    double distTolerance = 10.0;
     double degError=0;
     double distError=0;
     int rotateSpeedCmd=0;
@@ -52,9 +71,13 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as)
     std_msgs::String cmd_vel;
     std::string trigger = goal->trigger.data;
 
-    ROS_INFO("Go Go %s!",trigger);
+    ROS_INFO("Go Go %s!",trigger.c_str());
 
-
+    if( trigger == "release object"){
+        releaseObj();
+        as->setSucceeded();
+        return;
+    }
     if( trigger != "target"){
         cmd_vel.data = "o";
         cmd_pub.publish(cmd_vel);
@@ -81,6 +104,7 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as)
     }
     degError = getRemainDeg();
     distError = getRemainDist();
+    //ROS_INFO("%f",distError);
     if(fabs(degError)>degTolerance){
         rotateSpeedCmd = (int)fabs(degError/180.0*10);
         if(degError>0) moveCmd = 'a';
@@ -91,19 +115,27 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as)
         continue;
     }
     if(distError>distTolerance){
-        if((120>distError)&&(distError>110)&&(trigger != "target")){
-            cmd_vel.data = "qc";
+        if((108>distError)&&(distError>100)&&(trigger != "target")){
+            cmd_vel.data = "q";
             cmd_pub.publish(cmd_vel);
             ROS_INFO("Close Gripper!");
             ros::Duration(0.5).sleep();
+            cmd_vel.data = "c";
+            cmd_pub.publish(cmd_vel);
             break;
         }
-        if(distError>300.0) speedCmd = 9;
-        if(300.0>=distError>100.0) speedCmd = 7;
-        if(100.0>=distError>30.0) speedCmd = 5;
-        if(30.0>=distError>20.0) speedCmd = 3;
-        if(20.0>=distError>10.0) speedCmd = 2;
-        else speedCmd = 1;
+        if(distError>300.0)speedCmd = 4;
+        if((300.0>distError)&&(distError>200.0)) speedCmd = 3;
+        if((200.0>distError)&&(distError>150.0)) speedCmd = 2;
+        if((150.0>distError)&&(distError>100.0)) speedCmd = 2;
+        if((100.0>distError)&&(distError>70.0)) speedCmd = 2;
+        if((70.0>distError)&&(distError>40.0)) speedCmd = 2;
+        if((40.0>distError)&&(distError>10.0)) speedCmd = 2;
+        if((50.0>distError)&&(distError>10.0)) speedCmd = 2;
+        if(distError<10.0) speedCmd = 1;
+        speedCmd = 1;
+
+        ROS_INFO("%i",speedCmd);
         cmd_vel.data = std::to_string(speedCmd)+"w";
         cmd_pub.publish(cmd_vel);
         curSpeed = speedCmd;
@@ -116,6 +148,7 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as)
     }
   }
   as->setSucceeded();
+  return;
 }
 
 int main(int argc, char** argv)

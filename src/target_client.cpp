@@ -18,6 +18,8 @@ int main (int argc, char **argv)
   ROS_INFO("Action server started, sending goal.");
   // send a goal to the action
   agv::targetGoal goal;
+  //goal.trigger.data = "release object";
+  //goal.trigger.data = "object12";
   goal.trigger.data = "target";
   ac.sendGoal(goal);
 
