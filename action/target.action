@@ -1,5 +1,6 @@
 std_msgs/String trigger
+std_msgs/Float32 distanceTolerence
 ---
 std_msgs/String info
 ---
-std_msgs/String progress
+std_msgs/Float32 progress

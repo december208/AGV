@@ -146,6 +146,7 @@ include_directories(
 add_executable(target_pub src/target_pub.cpp)
 add_executable(target_server src/target_server.cpp)
 add_executable(target_client src/target_client.cpp)
+add_executable(storage_observer src/storage_observer.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -164,6 +165,9 @@ target_link_libraries(target_server
    ${catkin_LIBRARIES}
 )
 target_link_libraries(target_client
+   ${catkin_LIBRARIES}
+)
+target_link_libraries(storage_observer
    ${catkin_LIBRARIES}
 )
 
