@@ -48,7 +48,7 @@ void releaseObj(){
     ROS_INFO("Go Backward");
     cmd_vel.data = "2s";
     cmd_pub.publish(cmd_vel);
-    ros::Duration(1.5).sleep();
+    ros::Duration(1.0).sleep();
     cmd_vel.data = "q";
     cmd_pub.publish(cmd_vel);
 }
@@ -58,8 +58,8 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as){
     static tf2_ros::TransformListener tfListener(tfBuffer);
     ros::Rate rate(25);
     double angle=0;
-    double degTolerance = 5.0;
-    double distTolerance = 10.0;
+    double degTolerance = 3.0;
+    double distTolerance = 15.0;
     double degError=0;
     double distError=0;
     int rotateSpeedCmd=0;
@@ -104,14 +104,22 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as){
     }
     degError = getRemainDeg();
     distError = getRemainDist();
-    //ROS_INFO("%f",distError);
     if(fabs(degError)>degTolerance){
-        rotateSpeedCmd = (int)fabs(degError/180.0*10);
+        if(fabs(degError)>170.0)speedCmd = 9;
+        if((170.0>fabs(degError))&&(fabs(degError)>120.0)) speedCmd = 8;
+        if((120.0>fabs(degError))&&(fabs(degError)>90.0)) speedCmd = 7;
+        if((90.0>fabs(degError))&&(fabs(degError)>70.0)) speedCmd = 6;
+        if((70.0>fabs(degError))&&(fabs(degError)>60.0)) speedCmd = 6;
+        if((60.0>fabs(degError))&&(fabs(degError)>30.0)) speedCmd = 5;
+        if((30.0>fabs(degError))&&(fabs(degError)>20.0)) speedCmd = 4;
+        if((20.0>fabs(degError))&&(fabs(degError)>15.0)) speedCmd = 3;
+        if((15.0>fabs(degError))&&(fabs(degError)>10.0)) speedCmd = 3;
+        if((10.0>fabs(degError))&&(fabs(degError)>5.0)) speedCmd = 2;
+        if(fabs(degError)<5.0) speedCmd = 1;
         if(degError>0) moveCmd = 'a';
         else moveCmd = 'd';
-        cmd_vel.data = std::to_string(rotateSpeedCmd)+moveCmd;
+        cmd_vel.data = std::to_string(speedCmd)+moveCmd;
         cmd_pub.publish(cmd_vel);
-        curRotateSpeed = rotateSpeedCmd;
         continue;
     }
     if(distError>distTolerance){
@@ -133,12 +141,8 @@ void execute(const agv::targetGoalConstPtr& goal, Server* as){
         if((40.0>distError)&&(distError>10.0)) speedCmd = 2;
         if((50.0>distError)&&(distError>10.0)) speedCmd = 2;
         if(distError<10.0) speedCmd = 1;
-        speedCmd = 1;
-
-        ROS_INFO("%i",speedCmd);
         cmd_vel.data = std::to_string(speedCmd)+"w";
         cmd_pub.publish(cmd_vel);
-        curSpeed = speedCmd;
         continue;
     }
     else{
